@@ -1,0 +1,8 @@
+path: ./datasets
+train: images/train
+val: images/val
+
+names:
+  0: dirt  # 根据实际类别修改
+  1: crack
+  # ...其他类别
