@@ -1,8 +1,10 @@
-path: ./datasets
+path: ./
 train: images/train
 val: images/val
+test: images/test
 
+# 分割任务参数
 names:
-  0: dirt  # 根据实际类别修改
-  1: crack
-  # ...其他类别
+  0: spot
+nc: 1  # 单类别
+mask_ratio: 4  # 提高掩模分辨率
