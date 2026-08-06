@@ -1,0 +1,15 @@
+# YoloPV 数据集配置（光伏板红外污点检测）
+# 路径均相对项目根目录；YOLOv8 会自动将 images/ 替换为 labels/ 查找标签
+
+# 数据集根目录
+path: yolov8/datasets
+
+# 图像目录（相对 path）
+train: images/train
+val: images/val
+test: images/test
+
+# 类别定义（须与 JsonToTxt.py 中 CLASS_MAP 一致）
+names:
+  0: Stain   # 光伏板表面污点
+nc: 1        # 类别数
