@@ -65,7 +65,7 @@
 
 ## 数据集
 
-数据集位于 [yolov8/datasets/](file:///home/hex/Projects/YoloPV/yolov8/datasets)：
+数据集位于 [yolov8/datasets/](yolov8/datasets)：
 
 | 划分  | 图像数 | 标签目标数 | 类别 |
 |-------|--------|------------|------|
@@ -90,7 +90,7 @@ python JsonToTxt.py                     # 转换 train + val
 python JsonToTxt.py --split train        # 仅转换 train
 ```
 
-详见 [JsonToTxt.py](file:///home/hex/Projects/YoloPV/JsonToTxt.py)。
+详见 [JsonToTxt.py](JsonToTxt.py)。
 
 ## 快速开始
 
@@ -113,13 +113,17 @@ python YoloPV.py train --epochs 100 --device 0
 
 # 5. 预测
 python YoloPV.py predict --weights runs/detect/train/weights/best.pt
+
+# 视频 / RTSP 流推理（--source 支持视频文件或 RTSP 地址）
+python YoloPV.py predict --weights runs/detect/train/weights/best.pt --source rtsp://user:pass@192.168.1.100:554/stream
+python YoloPV.py predict --weights runs/detect/train/weights/best.pt --source video.mp4
 ```
 
 > 不带 GPU 时 `--device cpu` 也能跑，但速度较慢。冒烟测试建议 `epochs 1~3`、`imgsz 320` 即可。
 
 ## 命令行接口
 
-[YoloPV.py](file:///home/hex/Projects/YoloPV/YoloPV.py) 提供四个子命令：
+[YoloPV.py](YoloPV.py) 提供四个子命令：
 
 ```bash
 python YoloPV.py <command> [options]
@@ -127,10 +131,15 @@ python YoloPV.py <command> [options]
 
 | 子命令  | 作用 | 关键参数 |
 |---------|------|---------|
-| `train` | 训练模型 | `--data, --epochs, --batch, --lr0, --imgsz, --device` |
-| `predict`| 推理预测 | `--source, --weights, --conf, --iou, --max_det` |
+| `train` | 训练模型 | `--data, --epochs, --batch, --lr0, --imgsz, --device, --name` |
+| `predict`| 推理预测 | `--source, --weights, --conf, --iou, --max_det, --dedupe, --name` |
 | `val`   | 验证集评估 | `--data, --weights, --conf, --iou` |
 | `export`| 导出模型 | `--weights, --format`（onnx/torchscript/openvino） |
+| `smoke` | 冒烟测试（1 epoch 训练 + 单图预测） | `--data, --source, --name` |
+
+> `--source` 支持图像、目录、视频文件、RTSP 流地址。
+> 训练完成后会在输出目录生成 `data_version.yaml`，记录各划分样本数与哈希，用于数据版本追溯与复现。
+> `predict` 默认开启重复框去重（`--dedupe 5.0`）：按中心距离合并同一污点上的重复小框，使"框数 = 污点数"更准确。
 
 查看任意子命令帮助：
 
@@ -144,8 +153,8 @@ python YoloPV.py train --help
 
 | 工具 | 作用 | 用法 |
 |------|------|------|
-| [JsonToTxt.py](file:///home/hex/Projects/YoloPV/JsonToTxt.py) | LabelMe JSON → YOLO TXT | `python JsonToTxt.py --split all` |
-| [split_dataset.py](file:///home/hex/Projects/YoloPV/split_dataset.py) | 重新划分 train/val/test | `python split_dataset.py --ratio 0.8 0.1 0.1` |
+| [JsonToTxt.py](JsonToTxt.py) | LabelMe JSON → YOLO TXT | `python JsonToTxt.py --split all` |
+| [split_dataset.py](split_dataset.py) | 重新划分 train/val/test | `python split_dataset.py --ratio 0.8 0.1 0.1` |
 
 ### 训练参数默认值
 
@@ -158,12 +167,12 @@ python YoloPV.py train --help
 | `--lr0` | 0.01 | 初始学习率（ultralytics 会自动调） |
 | `--device` | `0` | GPU 0；CPU 用 `--device cpu` |
 
-### 关键增强参数（已在 [YoloPV.py](file:///home/hex/Projects/YoloPV/YoloPV.py) 中固定）
+### 关键增强参数（已在 [YoloPV.py](YoloPV.py) 中固定）
 
-- `mosaic=0.75`：拼接增强小目标上下文
-- `mixup=0.2`：提升泛化
-- `copy_paste=0.5`：增加污点样本多样性
-- `overlap_mask=True`：分割任务参数（本项目为检测，无副作用）
+- `mosaic=1.0`：拼接增强小目标上下文（最后 20 轮自动关闭）
+- `mixup=0.3`：提升泛化
+- `copy_paste=1.0`：最强小目标增强（复制粘贴污点样本）
+- 关闭翻转（`fliplr/flipud=0`）、`scale=0.1`、减弱颜色/擦除增强：避免破坏微小污点特征
 
 ## 修复历史（踩坑记录）
 
@@ -171,7 +180,7 @@ python YoloPV.py train --help
 
 | # | 问题 | 后果 | 修复 |
 |---|------|------|------|
-| 1 | 标签 txt 第一列是字符串 `Stain` | YOLO 解析失败 → `box_loss=0` | [JsonToTxt.py](file:///home/hex/Projects/YoloPV/JsonToTxt.py) 改为输出数字 ID `0` |
+| 1 | 标签 txt 第一列是字符串 `Stain` | YOLO 解析失败 → `box_loss=0` | [JsonToTxt.py](JsonToTxt.py) 改为输出数字 ID `0` |
 | 2 | 标签目录拼写 `lables/` | 找不到标签 | 重命名为 `labels/` |
 | 3 | `YoloPV_dataset.yaml` 类别名 `spot` 与标注 `Stain` 不符 | 类别映射错位 | yaml 修正为 `Stain` |
 | 4 | yaml 含 `mask_ratio`（分割任务参数） | 误用 | 删除 |
@@ -192,7 +201,7 @@ python YoloPV.py train --help
 | 14 | 类别定义在 `JsonToTxt.py` 与 `yaml` 两处重复 | 统一从 yaml 读取 |
 | 15 | 根目录 6 个 `results_jpeg_*.jpeg` + `runs/detect/train2~5` 历史产物 | 清理 |
 | 16 | `数据集标注/before.zip` 重复备份 | 删除 |
-| 17 | 数据集 10:3 失衡、test 无标签 | 新增 [split_dataset.py](file:///home/hex/Projects/YoloPV/split_dataset.py) 辅助重新划分 |
+| 17 | 数据集 10:3 失衡、test 无标签 | 新增 [split_dataset.py](split_dataset.py) 辅助重新划分 |
 
 **修复后端到端验证**（1 epoch CPU 冒烟测试）：
 
@@ -203,23 +212,25 @@ python YoloPV.py train --help
 | 数据集扫描 | 失败 | `10 images, 0 corrupt` |
 | 训练完成 | 否 | 是 |
 
-详见 [docs/TECHNICAL.md](file:///home/hex/Projects/YoloPV/docs/TECHNICAL.md) 第 7 节。
+详见 [docs/TECHNICAL.md](docs/TECHNICAL.md) 第 7 节。
 
 ## 开发日志
 
 持续记录项目的优化与修复过程，包括问题现象、根因分析、方案与验证结果。
 
 - 最新：**小目标误检修复**（imgsz 640→1280，mAP50-95 0.266→0.553，大蓝框误检 → 小框精检）
+- **重复框去重**：新增基于中心距离的后处理，消除同一污点上的重叠框，"框数=污点数"更准确
+- **数据集扩充调研**：确认现有原始数据（dvp1/mipi3 两相机）无可扩充的有效污点样本，需采集新数据人工标注
 
-详见 [docs/DEVLOG.md](file:///home/hex/Projects/YoloPV/docs/DEVLOG.md)。
+详见 [docs/DEVLOG.md](docs/DEVLOG.md)。
 
 ## 训练调优建议
 
 针对红外小目标检测的关键经验：
 
 1. **分辨率优先**：`imgsz=1280` 起步，小目标对下采样非常敏感
-2. **数据增强**：保留 `mosaic=0.75`、`copy_paste=0.5`，关闭 `flipud`（光伏板不会上下颠倒）
-3. **预测时 TTA**：`augment=True` 可提升召回 1–3 个点
+2. **数据增强**：保留 `mosaic=1.0`、`copy_paste=1.0`，关闭 `flipud`/`fliplr`（光伏板不会上下/左右颠倒）
+3. **预测时 TTA + 去重**：`augment=True` 提升召回；`--dedupe 5.0` 消除同一污点上的重复小框
 4. **小数据集**：先冻结骨干 10 epoch 微调，再全量训练；或换 `yolov8s.pt` 提升容量
 5. **正负样本不均**：本项目单类，可设 `single_cls=True` 加速
 
@@ -227,8 +238,8 @@ python YoloPV.py train --help
 
 `examples/` 提供了导出后 ONNX 模型的推理示例：
 
-- [YOLOv8-CPP-Inference/](file:///home/hex/Projects/YoloPV/examples/YOLOv8-CPP-Inference/)：C++ + OpenCV DNN，支持 CUDA
-- [YOLOv8-OpenCV-ONNX-Python/](file:///home/hex/Projects/YoloPV/examples/YOLOv8-OpenCV-ONNX-Python/)：Python + OpenCV DNN
+- [YOLOv8-CPP-Inference/](examples/YOLOv8-CPP-Inference/)：C++ + OpenCV DNN，支持 CUDA
+- [YOLOv8-OpenCV-ONNX-Python/](examples/YOLOv8-OpenCV-ONNX-Python/)：Python + OpenCV DNN
 
 先导出模型再使用示例：
 
@@ -241,7 +252,7 @@ python YoloPV.py export --weights runs/detect/train/weights/best.pt --format onn
 
 ```
 YoloPV/
-├── YoloPV.py                       # CLI 主程序：train/predict/val/export
+├── YoloPV.py                       # CLI 主程序：train/predict/val/export/smoke
 ├── YoloPV_dataset.yaml             # 数据集配置
 ├── JsonToTxt.py                    # LabelMe JSON -> YOLO TXT 转换
 ├── requirements.txt                # 依赖

@@ -14,6 +14,10 @@ venv/
 yolov8/datasets/*.cache
 yolov8/datasets/**/*.cache
 
+# YOLO 标签 TXT 为 LabelMe JSON 的派生产物（可用 JsonToTxt.py 一键重建），
+# 原始标注以 JSON 为准，不入库避免双套冗余
+yolov8/datasets/labels/**/*.txt
+
 # IDE
 .idea/
 .vscode/
